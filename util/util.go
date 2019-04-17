@@ -4,9 +4,11 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 )
 
-func FileUpload(r *http.Request) (string, error) {
+// FileUpload for POST multipart file uploads
+func FileUpload(r *http.Request, syncFolder string) (string, error) {
 	r.ParseMultipartForm(32 << 20)
 
 	var fileName string
@@ -19,7 +21,7 @@ func FileUpload(r *http.Request) (string, error) {
 
 	defer file.Close()
 
-	f, err := os.OpenFile("./uploads/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(path.Join(syncFolder, handler.Filename), os.O_WRONLY|os.O_CREATE, 0666)
 
 	if err != nil {
 		return fileName, err
