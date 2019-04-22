@@ -14,21 +14,23 @@ func FileUpload(r *http.Request, syncFolder string) (string, error) {
 	var fileName string
 
 	file, handler, err := r.FormFile("file")
-
 	if err != nil {
 		return fileName, err
 	}
-
 	defer file.Close()
 
-	f, err := os.OpenFile(path.Join(syncFolder, handler.Filename), os.O_WRONLY|os.O_CREATE, 0666)
-
+	err = os.MkdirAll(syncFolder, os.ModePerm)
 	if err != nil {
 		return fileName, err
 	}
 
-	fileName = handler.Filename
+	f, err := os.OpenFile(path.Join(syncFolder, handler.Filename), os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return fileName, err
+	}
 	defer f.Close()
+
+	fileName = handler.Filename
 
 	io.Copy(f, file)
 

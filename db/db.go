@@ -2,10 +2,8 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	// dumb go import
 	_ "github.com/mattn/go-sqlite3"
@@ -35,7 +33,8 @@ func init() {
 	    id INTEGER NOT NULL PRIMARY KEY,
 	    success INTEGER,
 	    created INTEGER,
-	    updated INTEGER
+	    updated INTEGER,
+	    filename TEXT
 	)
 	`
 
@@ -46,11 +45,11 @@ func init() {
 }
 
 // CreateAsset stores new asset
-func CreateAsset() int64 {
-	statement := `INSERT INTO assets (success, created, updated) values (?, ?, ?)`
-
+func CreateAsset(timestamp int64) int64 {
 	conn.m.Lock()
 	defer conn.m.Unlock()
+
+	statement := `INSERT INTO assets (success, created, updated) values (?, ?, ?)`
 
 	tx, err := conn.db.Begin()
 	if err != nil {
@@ -63,9 +62,7 @@ func CreateAsset() int64 {
 	}
 	defer stmt.Close()
 
-	now := time.Now().UnixNano()
-
-	_, err = stmt.Exec(1, now, now)
+	_, err = stmt.Exec(0, timestamp, timestamp)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,7 +73,7 @@ func CreateAsset() int64 {
 	}
 	defer stmt2.Close()
 
-	var id int64 
+	var id int64
 
 	err = stmt2.QueryRow().Scan(&id)
 	if err != nil {
@@ -88,84 +85,19 @@ func CreateAsset() int64 {
 	return id
 }
 
-// Test tests db connection
-func Test() {
-	db := conn.db
-	//defer db.Close()
+func SaveAsset(timestamp int64, id int64, filename string) {
+	conn.m.Lock()
+	defer conn.m.Unlock()
 
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-	stmt, err := tx.Prepare("insert into foo(id, name) values(?, ?)")
+	statement := `UPDATE assets SET success = 1, updated = ?, filename = ? WHERE id = ?`
+
+	stmt, err := conn.db.Prepare(statement)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer stmt.Close()
-	for i := 0; i < 100; i++ {
-		_, err = stmt.Exec(i, fmt.Sprintf("こんにちわ世界%03d", i))
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	tx.Commit()
 
-	rows, err := db.Query("select id, name from foo")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int
-		var name string
-		err = rows.Scan(&id, &name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(id, name)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	stmt, err = db.Prepare("select name from foo where id = ?")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
-	var name string
-	err = stmt.QueryRow("3").Scan(&name)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(name)
-
-	_, err = db.Exec("delete from foo")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = db.Exec("insert into foo(id, name) values(1, 'foo'), (2, 'bar'), (3, 'baz')")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	rows, err = db.Query("select id, name from foo")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int
-		var name string
-		err = rows.Scan(&id, &name)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(id, name)
-	}
-	err = rows.Err()
+	_, err = stmt.Exec(timestamp, filename, id)
 	if err != nil {
 		log.Fatal(err)
 	}

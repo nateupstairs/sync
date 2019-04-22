@@ -7,21 +7,29 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/nateupstairs/sync/config"
-	"github.com/nateupstairs/sync/db"
+	"github.com/nateupstairs/sync/models"
 	"github.com/nateupstairs/sync/util"
 )
 
 // PostVideo post a video
 func PostVideo(w http.ResponseWriter, r *http.Request) {
-	id := db.CreateAsset()
 	config := config.Get()
 
-	fileName, err := util.FileUpload(r, path.Join(config.HomeDir, fmt.Sprintf("%05d", id)))
+	asset := models.NewAsset()
+	asset.Save()
+
+	filename, err := util.FileUpload(r, path.Join(
+		config.HomeDir,
+		"Desktop",
+		"SYNC",
+		fmt.Sprintf("%05d", asset.ID)))
 
 	if err != nil {
-		spew.Dump(fileName)
 		spew.Dump(err)
 	}
 
-	w.Write([]byte("Gorilla!\n"))
+	asset.Filename = filename
+	asset.Save()
+
+	w.Write([]byte("Success!\n"))
 }
